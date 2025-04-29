@@ -3,11 +3,17 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      // Include JS files for JSX transformation
+      include: "**/*.{js,jsx}"
+    })
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'), // Ensure this points to your `src` directory
     },
+    extensions: ['.js', '.jsx', '.json'] // Add extensions to resolve
   },
   server: {
     proxy: {

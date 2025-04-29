@@ -1,4 +1,4 @@
-// src/pages/Races.jsx
+// src/pages/Races.jsx - Updated to consume API data properly
 import { useState, useEffect } from 'react';
 import axios from '../utils/axios';
 import { 
@@ -19,6 +19,7 @@ import {
   removeListeners,
   disconnectSocket
 } from '../utils/socket';
+import { showInfo, showError, showSuccess, showConfirm } from '../utils/modalManager';
 
 export default function Races() {
   const [races, setRaces] = useState([]);
@@ -49,7 +50,7 @@ export default function Races() {
       removeListeners();
       disconnectSocket();
     };
-  }, []);
+  }, [filters]); // Re-fetch when filters change
 
   // Handler for real-time runner location updates
   const handleRunnerLocationUpdate = (data) => {
@@ -122,6 +123,9 @@ export default function Races() {
           averagePace: data.averagePace
         };
       });
+
+      // Show notification about race completion
+      showSuccess(`Race completed by ${selectedRace.runner.name} in ${formatTime(data.completionTime)}!`);
     }
   };
 
@@ -140,160 +144,23 @@ export default function Races() {
       
       // Fetch races from the API endpoint
       const response = await axios.get(`/races${query}`);
-      setRaces(response.data.data);
-      setError(null);
+      
+      // Check if the response is successful
+      if (response.data && response.data.success) {
+        setRaces(response.data.data || []);
+        setError(null);
+      } else {
+        throw new Error(response.data?.error || 'Invalid API response format');
+      }
     } catch (err) {
       console.error('Error fetching races:', err);
-      setError(err.response?.data?.message || 'Failed to fetch races');
+      setError(err.response?.data?.error || err.message || 'Failed to fetch races');
       
-      // For development purposes, fall back to mock data if API fails
-      const mockRaces = [
-        {
-          _id: '1',
-          runner: {
-            _id: 'runner-1',
-            name: 'John Doe',
-            runnerNumber: 'ECO2023'
-          },
-          route: {
-            _id: '1',
-            name: 'Victoria Falls Half Marathon',
-            category: 'Half Marathon',
-            distance: 21.0975
-          },
-          category: 'Half Marathon',
-          status: 'in-progress',
-          startTime: new Date(Date.now() - 45 * 60 * 1000).toISOString(), // Started 45 minutes ago
-          trackingData: Array.from({ length: 10 }, (_, i) => ({
-            timestamp: new Date(Date.now() - (45 - i * 5) * 60 * 1000).toISOString(),
-            location: {
-              type: 'Point',
-              coordinates: [25.8522 + (i * 0.005), -17.9251 - (i * 0.005)]
-            },
-            elevation: 880 + i * 5,
-            speed: 10 + Math.random() * 2
-          })),
-          checkpointTimes: [
-            {
-              checkpoint: {
-                name: 'Start',
-                distanceFromStart: 0
-              },
-              time: new Date(Date.now() - 45 * 60 * 1000).toISOString()
-            },
-            {
-              checkpoint: {
-                name: '5KM Mark',
-                distanceFromStart: 5
-              },
-              time: new Date(Date.now() - 25 * 60 * 1000).toISOString()
-            }
-          ]
-        },
-        {
-          _id: '2',
-          runner: {
-            _id: 'runner-2',
-            name: 'Jane Smith',
-            runnerNumber: 'ECO2024'
-          },
-          route: {
-            _id: '3',
-            name: 'Victoria Falls Fun Run',
-            category: 'Fun Run',
-            distance: 5
-          },
-          category: 'Fun Run',
-          status: 'completed',
-          startTime: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // Started 1 hour ago
-          finishTime: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // Finished 30 minutes ago
-          completionTime: 1800, // 30 minutes in seconds
-          averagePace: 6, // 6 min/km
-          trackingData: Array.from({ length: 20 }, (_, i) => ({
-            timestamp: new Date(Date.now() - (60 - i * 1.5) * 60 * 1000).toISOString(),
-            location: {
-              type: 'Point',
-              coordinates: [25.8522 + (i * 0.002), -17.9251 - (i * 0.002)]
-            },
-            elevation: 880 + i * 2,
-            speed: 9 + Math.random() * 3
-          })),
-          checkpointTimes: [
-            {
-              checkpoint: {
-                name: 'Start',
-                distanceFromStart: 0
-              },
-              time: new Date(Date.now() - 60 * 60 * 1000).toISOString()
-            },
-            {
-              checkpoint: {
-                name: '2.5KM Mark',
-                distanceFromStart: 2.5
-              },
-              time: new Date(Date.now() - 45 * 60 * 1000).toISOString()
-            },
-            {
-              checkpoint: {
-                name: 'Finish',
-                distanceFromStart: 5
-              },
-              time: new Date(Date.now() - 30 * 60 * 1000).toISOString()
-            }
-          ]
-        },
-        {
-          _id: '3',
-          runner: {
-            _id: 'runner-3',
-            name: 'Mike Johnson',
-            runnerNumber: 'ECO2025'
-          },
-          route: {
-            _id: '2',
-            name: 'Victoria Falls Full Marathon',
-            category: 'Full Marathon',
-            distance: 42.195
-          },
-          category: 'Full Marathon',
-          status: 'in-progress',
-          startTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // Started 2 hours ago
-          trackingData: Array.from({ length: 30 }, (_, i) => ({
-            timestamp: new Date(Date.now() - (120 - i * 4) * 60 * 1000).toISOString(),
-            location: {
-              type: 'Point',
-              coordinates: [25.8522 + (i * 0.01), -17.9251 - (i * 0.01)]
-            },
-            elevation: 880 + i * 3,
-            speed: 11 + Math.random() * 2
-          })),
-          checkpointTimes: [
-            {
-              checkpoint: {
-                name: 'Start',
-                distanceFromStart: 0
-              },
-              time: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              checkpoint: {
-                name: '10KM Mark',
-                distanceFromStart: 10
-              },
-              time: new Date(Date.now() - 90 * 60 * 1000).toISOString()
-            },
-            {
-              checkpoint: {
-                name: '21KM Mark',
-                distanceFromStart: 21
-              },
-              time: new Date(Date.now() - 60 * 60 * 1000).toISOString()
-            }
-          ]
-        }
-      ];
+      // Show error notification
+      showError('Unable to fetch races data. Please try again later.');
       
-      setRaces(mockRaces);
+      // Set empty array instead of using mock data
+      setRaces([]);
     } finally {
       setLoading(false);
     }
@@ -314,10 +181,17 @@ export default function Races() {
       
       // Fetch the full race details
       const response = await axios.get(`/races/${race._id}`);
-      setSelectedRace(response.data.data);
-      setView('detail');
+      
+      if (response.data && response.data.success) {
+        setSelectedRace(response.data.data);
+        setView('detail');
+      } else {
+        throw new Error(response.data?.error || 'Invalid API response format');
+      }
     } catch (err) {
       console.error('Error fetching race details:', err);
+      showError('Failed to load race details. Please try again.');
+      
       // Fall back to the summary data if API fails
       setSelectedRace(race);
       setView('detail');
@@ -386,9 +260,12 @@ export default function Races() {
       link.click();
       link.remove();
       
+      // Show success notification
+      showSuccess('Certificate generated and downloaded successfully.');
+      
     } catch (err) {
       console.error('Error generating certificate:', err);
-      setError('Failed to generate certificate');
+      showError('Failed to generate certificate. Please try again later.');
     } finally {
       setCertificateLoading(false);
     }
@@ -401,21 +278,27 @@ export default function Races() {
       // Fetch updated race data
       const response = await axios.get(`/races/${raceId}`);
       
-      // Update selected race if we're in detail view
-      if (view === 'detail' && selectedRace?._id === raceId) {
-        setSelectedRace(response.data.data);
+      if (response.data && response.data.success) {
+        // Update selected race if we're in detail view
+        if (view === 'detail' && selectedRace?._id === raceId) {
+          setSelectedRace(response.data.data);
+        }
+        
+        // Update race in the list
+        setRaces(prevRaces => {
+          return prevRaces.map(race => 
+            race._id === raceId ? response.data.data : race
+          );
+        });
+        
+        showSuccess('Race data refreshed successfully.');
+      } else {
+        throw new Error(response.data?.error || 'Invalid API response format');
       }
-      
-      // Update race in the list
-      setRaces(prevRaces => {
-        return prevRaces.map(race => 
-          race._id === raceId ? response.data.data : race
-        );
-      });
       
     } catch (err) {
       console.error('Error refreshing race data:', err);
-      setError('Failed to refresh race data');
+      showError('Failed to refresh race data. Please try again.');
     } finally {
       setRefreshLoading(false);
     }

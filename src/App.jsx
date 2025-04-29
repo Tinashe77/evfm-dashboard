@@ -1,4 +1,5 @@
-// src/App.jsx
+// src/App.jsx - Updated with modal manager initialization
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -10,8 +11,14 @@ import RoutesManagement from './pages/Routes';
 import Races from './pages/Races';
 import Communications from './pages/Communications';
 import AdminUsers from './pages/AdminUsers';
+import { initModalManager } from './utils/modalManager';
 
 const App = () => {
+  // Initialize the modal manager at the app level
+  useEffect(() => {
+    initModalManager();
+  }, []);
+
   return (
     <Router>
       <AuthProvider>

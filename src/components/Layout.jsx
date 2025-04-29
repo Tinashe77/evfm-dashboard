@@ -1,5 +1,5 @@
-// src/components/Layout.jsx
-import { Fragment, useState } from 'react';
+// src/components/Layout.jsx with inactivity tracking
+import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
@@ -15,6 +15,8 @@ import {
   Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
+import { useInactivityTracker } from '../utils/inactivityTracker';
+import { initModalManager, showConfirm } from '../utils/modalManager';
 import logo from '../assets/logo.png';
 
 const navigation = [
@@ -38,10 +40,22 @@ const Layout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
 
+  // Initialize the modal manager
+  useEffect(() => {
+    initModalManager();
+  }, []);
+
+  // Use our inactivity tracker
+  useInactivityTracker();
+
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
-      logout();
-    }
+    showConfirm(
+      'Are you sure you want to logout?',
+      logout,
+      'Confirm Logout',
+      'Logout',
+      'Cancel'
+    );
   };
 
   // Modified sidebar navigation component

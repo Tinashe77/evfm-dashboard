@@ -1,5 +1,4 @@
-// src/pages/Routes.jsx - Simplified version focusing on API issues
-
+// src/pages/Routes.jsx - Updated to fix file uploads and replace alerts
 import { useState, useEffect, useRef } from 'react';
 import axios from '../utils/axios';
 import { 
@@ -10,10 +9,11 @@ import {
   TrashIcon,
   ArrowUpTrayIcon,
   MapPinIcon,
-  MapIcon  // Add this if it's missing
+  MapIcon
 } from '@heroicons/react/24/outline';
 import Loading from '../components/Loading';
 import Error from '../components/Error';
+import { showSuccess, showError, showConfirm, initModalManager } from '../utils/modalManager';
 
 export default function RoutesManagement() {
   const [routes, setRoutes] = useState([]);
@@ -30,8 +30,13 @@ export default function RoutesManagement() {
   });
   const fileInputRef = useRef(null);
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
+    // Initialize modal manager for notifications
+    initModalManager();
+    
+    // Fetch routes on component mount
     fetchRoutes();
   }, []);
 
@@ -49,6 +54,7 @@ export default function RoutesManagement() {
     } catch (err) {
       console.error('Error fetching routes:', err);
       setError(err.response?.data?.error || err.message || 'Failed to fetch routes');
+      showError('Unable to load routes. Please try again later.');
       setRoutes([]);
     } finally {
       setLoading(false);
@@ -70,6 +76,7 @@ export default function RoutesManagement() {
   const closeModal = () => {
     setIsModalOpen(false);
     setCurrentRoute(null);
+    setSelectedFile(null);
   };
 
   const handleInputChange = (e) => {
@@ -119,26 +126,28 @@ export default function RoutesManagement() {
           : [...prev, updatedRoute]
       );
 
+      // Show success message
+      showSuccess(currentRoute ? 'Route updated successfully!' : 'New route created successfully!');
+      
       closeModal();
     } catch (err) {
       console.error('Error saving route:', err);
-      setError(err.response?.data?.error || err.message || 'Failed to save route');
+      showError(err.response?.data?.error || err.message || 'Failed to save route');
     } finally {
       setLoading(false);
     }
   };
 
-  // Fix for the file upload functionality
-
+  // Improved file upload function
   const handleFileUpload = async (routeId) => {
     const file = fileInputRef.current?.files?.[0];
     if (!file) {
-      alert('Please select a GPX file to upload');
+      showError('Please select a GPX file to upload', 'No File Selected');
       return;
     }
   
     if (!file.name.toLowerCase().endsWith('.gpx')) {
-      alert('Please select a GPX file');
+      showError('Please select a GPX file', 'Wrong File Type');
       return;
     }
   
@@ -162,7 +171,7 @@ export default function RoutesManagement() {
         data: formData,
         headers: {
           'Authorization': `Bearer ${token}`,
-          // Do not set Content-Type here - let it be set automatically
+          // Do not set Content-Type here - let it be set automatically with boundary
         }
       });
       
@@ -174,7 +183,7 @@ export default function RoutesManagement() {
           route._id === routeId ? response.data.data : route
         ));
         
-        alert('GPX file uploaded successfully!');
+        showSuccess('GPX file uploaded successfully!');
         fileInputRef.current.value = '';
       } else {
         throw new Error(response.data?.error || 'Upload failed');
@@ -195,7 +204,7 @@ export default function RoutesManagement() {
         errorMessage = err.message;
       }
       
-      alert(errorMessage);
+      showError(errorMessage, 'Upload Failed');
     } finally {
       setUploadLoading(false);
     }
@@ -209,30 +218,39 @@ export default function RoutesManagement() {
         setRoutes(prev => prev.map(route => 
           route._id === routeId ? { ...route, isActive } : route
         ));
+        
+        showSuccess(`Route ${isActive ? 'activated' : 'deactivated'} successfully!`);
       } else {
         throw new Error(response.data?.error || 'Invalid activation response');
       }
     } catch (err) {
       console.error('Error activating route:', err);
-      setError(err.response?.data?.error || err.message || 'Failed to activate route');
+      showError(err.response?.data?.error || err.message || 'Failed to update route status');
     }
   };
 
   const handleDelete = async (routeId) => {
-    if (!window.confirm('Are you sure you want to delete this route?')) return;
-    
-    try {
-      const response = await axios.delete(`/routes/${routeId}`);
-      
-      if (response.data?.success) {
-        setRoutes(prev => prev.filter(route => route._id !== routeId));
-      } else {
-        throw new Error(response.data?.error || 'Invalid delete response');
-      }
-    } catch (err) {
-      console.error('Error deleting route:', err);
-      setError(err.response?.data?.error || err.message || 'Failed to delete route');
-    }
+    showConfirm(
+      'Are you sure you want to delete this route? This action cannot be undone.',
+      async () => {
+        try {
+          const response = await axios.delete(`/routes/${routeId}`);
+          
+          if (response.data?.success) {
+            setRoutes(prev => prev.filter(route => route._id !== routeId));
+            showSuccess('Route deleted successfully!');
+          } else {
+            throw new Error(response.data?.error || 'Invalid delete response');
+          }
+        } catch (err) {
+          console.error('Error deleting route:', err);
+          showError(err.response?.data?.error || err.message || 'Failed to delete route');
+        }
+      },
+      'Confirm Delete',
+      'Delete',
+      'Cancel'
+    );
   };
 
   const RouteModal = () => (
@@ -421,7 +439,6 @@ export default function RoutesManagement() {
       </div>
     </div>
   );
-  const [selectedFile, setSelectedFile] = useState(null);
 
   if (loading && routes.length === 0) return <Loading />;
   if (error) return <Error message={error} onRetry={fetchRoutes} />;

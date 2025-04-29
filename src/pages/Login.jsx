@@ -1,10 +1,11 @@
-// src/pages/Login.jsx
-import { useState } from 'react';
+// src/pages/Login.jsx - Updated to use modal system
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import logo from '../assets/logo.png';
-import vicFalls from '../assets/vic-falls.jpg'; // Replace with Econet logo
+import vicFalls from '../assets/vic-falls.jpg';
 import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { initModalManager, showError } from '../utils/modalManager';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -13,6 +14,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // Initialize modal system
+  useEffect(() => {
+    initModalManager();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,7 +29,12 @@ export default function Login() {
       navigate('/dashboard');
     } catch (err) {
       console.error('Login error in component:', err);
-      setError(err.response?.data?.message || 'Failed to login. Please check your credentials.');
+      setError(err.message || 'Failed to login. Please check your credentials.');
+      
+      // Show error modal for network errors
+      if (err.message.includes('Unable to connect') || err.message.includes('Network Error')) {
+        showError(err.message, 'Connection Error');
+      }
     } finally {
       setLoading(false);
     }
